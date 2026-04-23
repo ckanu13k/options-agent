@@ -1,0 +1,50 @@
+name: exit-sweep
+
+# Runs every 30 min during US market hours to honor the 15% stop and
+# take-profit rules intraday. This is the workhorse of risk management —
+# the daily job only handles new entries.
+
+on:
+  schedule:
+    # Every 30 min, 13:30–20:00 UTC (covers 9:30am–4:00pm ET in both EDT/EST).
+    - cron: "*/30 13-20 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: options-agent-sweep
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run exit sweep
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_PAPER: "true"
+          # Anthropic key not strictly needed for sweep, but AppConfig requires it
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python -c "
+          from agent.config import AppConfig
+          from agent.executor import Executor
+          import logging, json
+          logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+          cfg = AppConfig.from_env()
+          ex = Executor(cfg)
+          clock = ex._client.get_clock()
+          if not clock.is_open:
+              print(json.dumps({'status': 'market_closed'}))
+              raise SystemExit(0)
+          closed = ex.sweep_exits()
+          print(json.dumps({'closed': closed}))
+          "

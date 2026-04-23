@@ -1,0 +1,45 @@
+name: daily-options-agent
+
+on:
+  # 10:00 ET — run twice so we hit the right local time year-round.
+  # GitHub Actions cron is UTC. EDT: 10:00 ET = 14:00 UTC. EST: 10:00 ET = 15:00 UTC.
+  # The agent's own market-clock check will no-op on holidays/weekends.
+  schedule:
+    - cron: "0 14 * * 1-5"  # EDT weekdays
+    - cron: "0 15 * * 1-5"  # EST weekdays
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (plan only, do not submit orders)"
+        required: false
+        default: "false"
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: options-agent
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run agent
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALPACA_PAPER: "true"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: "claude-opus-4-7"
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: python -m agent
