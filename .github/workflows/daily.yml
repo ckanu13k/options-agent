@@ -17,6 +17,8 @@ on:
 jobs:
   trade:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     timeout-minutes: 10
     concurrency:
       group: options-agent
