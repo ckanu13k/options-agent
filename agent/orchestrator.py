@@ -38,9 +38,9 @@ def run_once() -> dict:
                "skipped_reason": None}
 
     # 1. Market clock
-    clock = ex._client.get_clock()
-    if not clock.is_open:
-        log.info("Market closed (next open %s) — sweeping only.", clock.next_open)
+    clock = ex.get_clock()
+    if not clock["is_open"]:
+        log.info("Market closed (next open %s) — sweeping only.", clock.get("next_open"))
         # Still run the sweep in case we want to queue next-session exits;
         # otherwise just report and stop.
         summary["skipped_reason"] = "market_closed"

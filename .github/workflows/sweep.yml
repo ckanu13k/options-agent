@@ -43,8 +43,8 @@ jobs:
           logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
           cfg = AppConfig.from_env()
           ex = Executor(cfg)
-          clock = ex._client.get_clock()
-          if not clock.is_open:
+          clock = ex.get_clock()
+          if not clock['is_open']:
               print(json.dumps({'status': 'market_closed'}))
               raise SystemExit(0)
           closed = ex.sweep_exits()
